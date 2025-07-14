@@ -95,7 +95,7 @@ def init_mongodb_connection():
         db = client[db_name]
         
         # Verificar conexión
-        db.admin.command('ismaster')
+        client.admin.command('ismaster')
         
         return db, True, f"Conectado a: {db_name}"
     except Exception as e:
