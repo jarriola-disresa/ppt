@@ -1,0 +1,30 @@
+# Archivos de configuración sensible
+.streamlit/secrets.toml
+
+# Archivos de datos
+*.xlsx
+*.xls
+csv_data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
