@@ -204,41 +204,15 @@ def main():
     # Header principal
     st.markdown('<h1 class="main-header">📊 Dashboard KSB - MongoDB Edition</h1>', unsafe_allow_html=True)
     
-    # Configuración de MongoDB en sidebar
-    st.sidebar.markdown("## 🔗 Configuración MongoDB")
-    
     # Intentar conexión
     db, connection_success, connection_msg = init_mongodb_connection()
     
     if connection_success:
-        st.sidebar.success(connection_msg)
-        
-        # Mostrar estadísticas de conexión
-        try:
-            collections_info = []
-            collection_names = ['resumen_presupuesto', 'presupuesto_detallado', 'transacciones', 'reclasificaciones', 'cuentas_reales']
-            
-            for coll_name in collection_names:
-                try:
-                    count = db[coll_name].count_documents({})
-                    collections_info.append(f"• {coll_name}: {count} docs")
-                except:
-                    collections_info.append(f"• {coll_name}: No disponible")
-            
-            st.sidebar.markdown("**Colecciones:**")
-            for info in collections_info:
-                st.sidebar.markdown(info)
-                
-        except Exception as e:
-            st.sidebar.warning(f"Error obteniendo info: {e}")
-        
         # Cargar datos
         with st.spinner('Cargando datos desde MongoDB...'):
             data_dict, load_success, load_msg = load_data_from_mongo(db)
         
         if load_success:
-            st.sidebar.success(load_msg)
-            
             # Navegación principal
             st.sidebar.markdown("## 🎛️ Panel de Control")
             page = st.sidebar.selectbox(
@@ -531,7 +505,6 @@ def main():
             st.error(load_msg)
             st.info("Verifica que los datos estén cargados correctamente en MongoDB.")
     else:
-        st.sidebar.error(connection_msg)
         st.error("No se pudo conectar a MongoDB")
         
         # Mostrar instrucciones de configuración
