@@ -130,8 +130,11 @@ def create_resumen_charts_mongo(resumen_df):
     if resumen_df.empty:
         return None, None, None, None
     
-    # Preparar datos para gráficas
-    pivot_data = resumen_df.pivot_table(
+    # Filtrar SOLO áreas (excluir fila TOTAL)
+    areas_df = resumen_df[resumen_df['area'] != 'TOTAL'].copy()
+    
+    # Preparar datos para gráficas (solo áreas, sin TOTAL)
+    pivot_data = areas_df.pivot_table(
         values='presupuesto_mensual',
         index='area',
         columns='mes',
@@ -231,25 +234,32 @@ def main():
                     fig1, fig2, fig3, total_by_area = create_resumen_charts_mongo(resumen_df)
                     
                     if fig1 is not None:
-                        # Obtener el presupuesto total anual (35 millones)
-                        total_anual_record = resumen_df[resumen_df['area'] == 'TOTAL']['total_anual'].iloc[0] if len(resumen_df[resumen_df['area'] == 'TOTAL']) > 0 else 0
+                        # Obtener el presupuesto total anual (35 millones) y ejecutado Ene-Jun de la fila TOTAL
+                        total_records = resumen_df[resumen_df['area'] == 'TOTAL']
+                        if len(total_records) > 0:
+                            total_anual_record = total_records['total_anual'].iloc[0]
+                            # Calcular ejecutado Ene-Jun de la fila TOTAL
+                            total_ene_jun_records = total_records[total_records['mes'].isin(['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio'])]
+                            ejecutado_ene_jun = total_ene_jun_records['presupuesto_mensual'].sum()
+                        else:
+                            total_anual_record = 0
+                            ejecutado_ene_jun = 0
                         
                         # Métricas principales  
                         col1, col2, col3, col4 = st.columns(4)
                         
-                        total_budget_mensual = total_by_area.sum()  # Para gráficas mensuales
-                        max_area = total_by_area.idxmax()
-                        max_value = total_by_area.max()
-                        avg_budget = total_by_area.mean()
+                        # Para métricas de áreas (sin TOTAL)
+                        max_area = total_by_area.idxmax() if len(total_by_area) > 0 else "N/A"
+                        max_value = total_by_area.max() if len(total_by_area) > 0 else 0
                         
                         with col1:
                             st.metric("💰 Presupuesto 2025", f"Q {total_anual_record:,.0f}")
                         with col2:
-                            st.metric("📊 Ejecutado Ene-Jun", f"Q {total_budget_mensual:,.0f}")
+                            st.metric("📊 Ejecutado Ene-Jun", f"Q {ejecutado_ene_jun:,.0f}")
                         with col3:
                             st.metric("🏆 Área Principal", max_area)
                         with col4:
-                            pendiente = total_anual_record - total_budget_mensual
+                            pendiente = total_anual_record - ejecutado_ene_jun
                             st.metric("⏳ Pendiente Jul-Dic", f"Q {pendiente:,.0f}")
                         
                         # Gráficas
@@ -262,18 +272,19 @@ def main():
                         with col2:
                             st.plotly_chart(fig2, use_container_width=True)
                             
-                            # Tabla resumen
+                            # Tabla resumen por áreas
                             st.subheader("📋 Resumen por Área")
                             summary_table = pd.DataFrame({
                                 'Área': total_by_area.index,
                                 'Ejecutado Ene-Jun': total_by_area.values,
-                                'Porcentaje': (total_by_area.values / total_budget_mensual * 100).round(1)
+                                'Porcentaje': (total_by_area.values / ejecutado_ene_jun * 100).round(1) if ejecutado_ene_jun > 0 else 0
                             })
                             summary_table['Ejecutado Ene-Jun'] = summary_table['Ejecutado Ene-Jun'].apply(lambda x: f"Q {x:,.0f}")
                             summary_table['Porcentaje'] = summary_table['Porcentaje'].apply(lambda x: f"{x}%")
                             
-                            # Agregar nota del presupuesto total
-                            st.info(f"💰 **Presupuesto Total 2025: Q {total_anual_record:,.0f}** | Ejecutado Ene-Jun: Q {total_budget_mensual:,.0f} ({(total_budget_mensual/total_anual_record*100):.1f}%)")
+                            # Agregar nota del presupuesto total (usando fila TOTAL)
+                            porcentaje_ejecutado = (ejecutado_ene_jun/total_anual_record*100) if total_anual_record > 0 else 0
+                            st.info(f"💰 **Presupuesto Total 2025: Q {total_anual_record:,.0f}** | Ejecutado Ene-Jun: Q {ejecutado_ene_jun:,.0f} ({porcentaje_ejecutado:.1f}%)")
                             st.dataframe(summary_table, use_container_width=True)
                     else:
                         st.warning("No se pudieron generar las gráficas.")
