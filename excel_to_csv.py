@@ -6,10 +6,10 @@ import os
 def process_excel_to_csv():
     """Procesar Excel y convertir a archivos CSV para MongoDB"""
     
-    file_path = "/home/jarriola/mercadeo/EXPORT KSB 1 ene a jun para ppto.xlsx"
+    file_path = "EXPORT KSB 1 ene a jun para ppto.xlsx"
     
     # Crear directorio para CSVs
-    csv_dir = "/home/jarriola/mercadeo/csv_data"
+    csv_dir = "csv_data"
     os.makedirs(csv_dir, exist_ok=True)
     
     # Cargar todas las hojas
@@ -24,13 +24,16 @@ def process_excel_to_csv():
     print("Procesando hoja Resumen...")
     resumen_list = []
     
-    # Extraer datos de presupuesto por área y mes
-    data_rows = resumen.iloc[2:9]  # Filas con datos de áreas
+    # Extraer datos de presupuesto por área y mes (filas 2-10, incluyendo TOTAL)
+    data_rows = resumen.iloc[2:11]  # Filas 2-10 (incluye fila TOTAL)
     months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
     for idx, row in data_rows.iterrows():
-        if pd.notna(row.iloc[1]) and row.iloc[1] != 'AREA':
-            area = row.iloc[1]
+        area_name = row.iloc[1] if pd.notna(row.iloc[1]) else ''
+        
+        # Incluir solo áreas con datos válidos (excluyendo headers)
+        if pd.notna(row.iloc[1]) and area_name != 'AREA' and area_name != '':
+            area = str(area_name).strip()
             
             # Crear un registro por mes
             for i, month in enumerate(months):
@@ -38,16 +41,34 @@ def process_excel_to_csv():
                 total_anual = row.iloc[14] if pd.notna(row.iloc[14]) else 0
                 freeze = row.iloc[15] if pd.notna(row.iloc[15]) else 0
                 
-                resumen_list.append({
-                    'area': area,
-                    'mes': month,
-                    'year': 2025,
-                    'presupuesto_mensual': float(value),
-                    'total_anual': float(total_anual),
-                    'freeze': float(freeze),
-                    'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'source': 'EXPORT KSB 1 ene a jun para ppto.xlsx'
-                })
+                # Convertir valores a float de forma segura
+                try:
+                    value_float = float(value) if pd.notna(value) else 0
+                    total_anual_float = float(total_anual) if pd.notna(total_anual) else 0
+                    freeze_float = float(freeze) if pd.notna(freeze) else 0
+                    
+                    resumen_list.append({
+                        'area': area,
+                        'mes': month,
+                        'year': 2025,
+                        'presupuesto_mensual': value_float,
+                        'total_anual': total_anual_float,
+                        'freeze': freeze_float,
+                        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'source': 'EXPORT KSB 1 ene a jun para ppto.xlsx'
+                    })
+                except (ValueError, TypeError):
+                    # En caso de error, usar 0
+                    resumen_list.append({
+                        'area': area,
+                        'mes': month,
+                        'year': 2025,
+                        'presupuesto_mensual': 0,
+                        'total_anual': 0,
+                        'freeze': 0,
+                        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'source': 'EXPORT KSB 1 ene a jun para ppto.xlsx'
+                    })
     
     resumen_df = pd.DataFrame(resumen_list)
     resumen_df.to_csv(f"{csv_dir}/resumen_presupuesto.csv", index=False, encoding='utf-8')
